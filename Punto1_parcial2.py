@@ -21,7 +21,7 @@ from pyomo.opt import SolverFactory
 ##############################################################################
 
 #FUNCION ELIMINAR COMPONENTE
-def delete_component(Model, comp_name):
+def deleteComponent(Model, comp_name):
 
         list_del = [vr for vr in vars(Model)
                     if comp_name == vr
@@ -38,19 +38,16 @@ def delete_component(Model, comp_name):
 ##############################################################################
 
 #Configuración Iteraciones----------------------------------------------------
-numIteraciones=11 
-iteraciones=range(numIteraciones)
+cantIter=11 
+itera=range(cantIter)
 e_vec=[2,3,4,5,6,7,8,9,10,11]
 
-       
-
-    
 #Creación Modelo--------------------------------------------------------------
 Model = ConcreteModel()
 
 #sets & parameters------------------------------------------------------------
-numNodes = 5
-Model.N=RangeSet(1,numNodes)
+numNodos = 5
+Model.N=RangeSet(1,numNodos)
 
 #hops-----------------------------------------------------------------------
 Model.h =Param(Model.N, Model.N, mutable=True)
@@ -125,23 +122,24 @@ for k in e_vec:
     Model.source=Constraint(Model.N, rule=source_rule)
         
     #Restricción nodo destino
-    def destination_rule(Model,j):
+    def ruleDestino(Model,j):
         if j==d:
             return sum(Model.x[i,j] for i in Model.N)==1
         else:
             return Constraint.Skip
 
-    Model.destination=Constraint(Model.N, rule=destination_rule)
+    Model.destination=Constraint(Model.N, rule= ruleDestino)
     
     #Restricción nodo intermedio
-    def intermediate_rule(Model,i):
+    def ruleIntermedio(Model,i):
         if i!=s and i!=d:
             return sum(Model.x[i,j] for j in Model.N) - sum(Model.x[j,i] for j in Model.N)==0
         else:
             return Constraint.Skip
 
-    Model.intermediate=Constraint(Model.N, rule=intermediate_rule)
+    Model.intermediate=Constraint(Model.N, rule= ruleIntermedio)
     
+    #Solución del modelo
     SolverFactory('glpk').solve(Model)
     
     valorF1=value(Model.f1)
@@ -149,13 +147,13 @@ for k in e_vec:
     f1_vec.append(valorF1)
     f2_vec.append(valorF2)
     
-    delete_component(Model, 'O_z')
-    delete_component(Model, 'source')
-    delete_component(Model, 'destination')
-    delete_component(Model, 'intermediate')
+    #eliminar componentes
+    deleteComponent(Model, 'O_z')
+    deleteComponent(Model, 'source')
+    deleteComponent(Model, 'destination')
+    deleteComponent(Model, 'intermediate')
     
-    #end for
-
+#pintar el modelo
 plt.plot(f1_vec,f2_vec,'o-.')
 plt.title('Frente Óptimo de Pareto')
 plt.xlabel('F1')
