@@ -3,161 +3,124 @@
 Created on Tue Nov 21 22:14:48 2023
 
 @author: david
+
+Punto 1 parcial 2 MOS
 """
 
-##############################################################################
-#####################        LIBRERÍAS        ################################
-##############################################################################
-
-#Plot Imports
+#Imports plots
 import matplotlib.pyplot as plt
 
-#Pyomo Imports (Modelo Matematico)
+#Pyomo para el modelo
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
 
-##############################################################################
-#####################        FUNCIONES        ################################
-##############################################################################
 
-#FUNCION ELIMINAR COMPONENTE
-def deleteComponent(Model, comp_name):
+#Funcion para eliminar un componente
+def eliminarComponente(modelo, nombreComponente):
 
-        list_del = [vr for vr in vars(Model)
-                    if comp_name == vr
-                    or vr.startswith(comp_name + '_index')
-                    or vr.startswith(comp_name + '_domain')]
+        #lista de componentes para ser eliminados que corresponden con el nombre dado
+        lista_eliminados = [vr for vr in vars(modelo) if vr.startswith(nombreComponente)]
 
-        list_del_str = ', '.join(list_del)
-        print('Deleting model components ({}).'.format(list_del_str))
+        lista_eliminados_str = ', '.join(lista_eliminados)
+        print('Eliminando los componentes ({}) del modelo.'.format(lista_eliminados_str))
 
-        for kk in list_del:
-            Model.del_component(kk)
-##############################################################################
-#####################        MODELO           ################################
-##############################################################################
+        for componente in lista_eliminados:
+            modelo.del_component(componente)
 
-#Configuración Iteraciones----------------------------------------------------
-cantIter=11 
-itera=range(cantIter)
-e_vec=[2,3,4,5,6,7,8,9,10,11]
 
-#Creación Modelo--------------------------------------------------------------
-Model = ConcreteModel()
+#Iteraciones
+numIter=5
+itera=range(numIter)
+vector = [i/(numIter-1) for i in range(numIter)]
+valor1, valor2 = 0,0
+#e_vec=[2,3,4,5,6,7,8,9,10,11]
 
-#sets & parameters------------------------------------------------------------
+#Creación del modelo
+Modelo = ConcreteModel()
+
+#parametros y conjuntos
 numNodos = 5
-Model.N=RangeSet(1,numNodos)
+Modelo.N=RangeSet(1,numNodos)
 
-#hops-----------------------------------------------------------------------
-Model.h =Param(Model.N, Model.N, mutable=True)
+#Saltos (hops)
+Modelo.h =Param(Modelo.N, Modelo.N, mutable=True, default= 999)
 
-for i in Model.N:
-    for j in Model.N:
-        Model.h[i,j] = 999
+Modelo.h[1,2] = 1
+Modelo.h[1,3] = 1
+Modelo.h[2,5] = 1
+Modelo.h[3,4] = 1
+Modelo.h[4,5] = 1
 
+#costos (Costs)
+Modelo.c =Param(Modelo.N, Modelo.N, mutable=True, default= 999)
 
-Model.h[1,2] = 1
-Model.h[1,3] = 1
-Model.h[2,5] = 1
-Model.h[3,4] = 1
-Model.h[4,5] = 1
+Modelo.c[1,2] = 10
+Modelo.c[1,3] = 5
+Modelo.c[2,5] = 10
+Modelo.c[3,4] = 5
+Modelo.c[4,5] = 5
 
-#costos-----------------------------------------------------------------------
-Model.c =Param(Model.N, Model.N, mutable=True)
-
-for i in Model.N:
-    for j in Model.N:
-        Model.c[i,j] = 999
-
-Model.c[1,2] = 10
-Model.c[1,3] = 5
-Model.c[2,5] = 10
-Model.c[3,4] = 5
-Model.c[4,5] = 5
-
-#origen y destino-----------------------------------------------------------------------
-        
-s = 1
-d = 5
+#Se escoge el nodo origen y el nodo destino
+nodoOrigen = 1
+nodoDestino = 5
         
 
-#variables--------------------------------------------------------------------
-            
-#Variable binaria que indica si el enlace (i,j) es seleccionado para hacer parte 
-#del camino que va del nodo fuente al nodo destino.
-Model.x = Var(Model.N,Model.N, domain=Binary)
+#variables
+
+Modelo.x = Var(Modelo.N,Modelo.N, domain=Binary)
 
 
-## OBJECTIVE FUNCTIONS*************************************************************
+## Funciones objetivo
 
-#Función hops
-Model.f1 = sum(Model.x[i,j] * Model.h[i,j] for i in Model.N for j in Model.N)
+#Función saltos(hops)
+Modelo.f1 = sum(Modelo.x[i,j] * Modelo.h[i,j] for i in Modelo.N for j in Modelo.N)
 
-#Función de costos
-Model.f2 = sum(Model.x[i,j] * Model.c[i,j] for i in Model.N for j in Model.N)
+#Función de costos(costs)
+Modelo.f2 = sum(Modelo.x[i,j] * Modelo.c[i,j] for i in Modelo.N for j in Modelo.N)
 
 
-#Proceso para ejecutar varias veces el modelo matemático con el fin de aplicar el
-#método de e-constraint.
-cont=-1
-f1_vec=[]
-f2_vec=[]
-for k in e_vec:
-    cont=cont+1
-    e=e_vec[cont]
-    #Función objetivo general
-    Model.O_z = Objective(expr=Model.f2, sense=minimize)
+#Proceso de suma ponderada para ejecución en multiples iteraciones del modelo.
+valoresF1 = []
+valoresF2 =[]
+for valor2 in vector:
     
-    #e-constraint
-    Model.f1_constraint = Constraint(expr= Model.f1 <= e)
+    valor1 = 1 - valor2 
 
-    ##Restricción nodo origen
-    def source_rule(Model,i):
-        if i==s:
-            return sum(Model.x[i,j] for j in Model.N)==1
-        else:
-            return Constraint.Skip
+    # Definición de la función objetivo general
+    Modelo.O_z = Objective(expr=valor1 * Modelo.f1 + valor2 * Modelo.f2, sense=minimize)
+    
+    # Restricción eConstraint
+    Modelo.eConstraint = Constraint(Modelo.N, rule=lambda m, i: sum(m.x[i, j] * m.h[i, j] for j in m.N) <= numIter)
 
-    Model.source=Constraint(Model.N, rule=source_rule)
-        
-    #Restricción nodo destino
-    def ruleDestino(Model,j):
-        if j==d:
-            return sum(Model.x[i,j] for i in Model.N)==1
-        else:
-            return Constraint.Skip
+    # Restricción del nodo de origen
+    Modelo.origen = Constraint(Modelo.N, rule=lambda m, i: sum(m.x[i, j] for j in m.N) == 1 if i == nodoOrigen else Constraint.Skip)
 
-    Model.destination=Constraint(Model.N, rule= ruleDestino)
-    
-    #Restricción nodo intermedio
-    def ruleIntermedio(Model,i):
-        if i!=s and i!=d:
-            return sum(Model.x[i,j] for j in Model.N) - sum(Model.x[j,i] for j in Model.N)==0
-        else:
-            return Constraint.Skip
+    # Restricción del nodo de destino
+    Modelo.destino = Constraint(Modelo.N, rule=lambda m, j: sum(m.x[i, j] for i in m.N) == 1 if j == nodoDestino else Constraint.Skip)
 
-    Model.intermediate=Constraint(Model.N, rule= ruleIntermedio)
-    
-    #Solución del modelo
-    SolverFactory('glpk').solve(Model)
-    
-    valorF1=value(Model.f1)
-    valorF2=value(Model.f2)
-    f1_vec.append(valorF1)
-    f2_vec.append(valorF2)
-    
-    #eliminar componentes
-    deleteComponent(Model, 'O_z')
-    deleteComponent(Model, 'source')
-    deleteComponent(Model, 'destination')
-    deleteComponent(Model, 'intermediate')
-    
-#pintar el modelo
-plt.plot(f1_vec,f2_vec,'o-.')
+    # Restricción de nodos intermedios
+    Modelo.intermedios = Constraint(Modelo.N, rule=lambda m, i: sum(m.x[i, j] for j in m.N) - sum(m.x[j, i] for j in m.N) == 0 if i != nodoOrigen and i != nodoDestino else Constraint.Skip) 
+
+    # Resolver el modelo
+    SolverFactory('glpk').solve(Modelo)
+
+    # Obtener los valores de las funciones objetivo
+    valor_f1 = value(Modelo.f1)
+    valor_f2 = value(Modelo.f2)
+    valores_f1.append(valor_f1)
+    valores_f2.append(valor_f2)
+
+    # Eliminar los componentes de restricción
+    eliminar_componente(modelo, 'O_z')
+    eliminar_componente(modelo, 'origen')
+    eliminar_componente(modelo, 'destino')
+    eliminar_componente(modelo, 'intermedios')
+    eliminar_componente(modelo, 'eConstraint')
+
+# Grafica del frente óptimo de Pareto
+plt.plot(valores_f1, valores_f2, 'o-.')
 plt.title('Frente Óptimo de Pareto')
 plt.xlabel('F1')
 plt.ylabel('F2')
-
 plt.grid(True)
 plt.show()
