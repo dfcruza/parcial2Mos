@@ -98,7 +98,8 @@ function todo = Punto3Parcial()
     end
 
     %Vamos a empezar en un vértice aleatorio
-    FEV_str = mat2str(vertices(randi(size(vertices, 1)), :));
+    FEV = vertices(randi(size(vertices, 1)), :)
+    FEV_str = mat2str(FEV);
     %disp("FEV_str:")
     %disp(FEV_str)
     %disp("Valores de FEV")
@@ -106,6 +107,7 @@ function todo = Punto3Parcial()
     %disp("Adyacencias de FEV")
     %disp(adyacentes(FEV_str))
     maxVal = 0;
+    maxVertex = [];
     maxVertex_str = '';
 
     while true
@@ -114,20 +116,26 @@ function todo = Punto3Parcial()
         for vertex = adyacentes(FEV_str)
             if valores(mat2str(vertex{1})) > maxVal
                 maxVal = valores(mat2str(vertex{1}));
+                maxVertex = vertex{1};
                 maxVertex_str = mat2str(vertex{1});
             end
         end
 
         % Si el vértice actual es el más óptimo, ya terminamos
-        disp("Maxvertex str")
-        disp(maxVertex_str)
-        disp("FEV str")
-        disp(FEV_str)
-        if maxVertex_str == FEV_str
+        %disp("Maxvertex str")
+        %disp(maxVertex_str)
+        %disp("FEV str")
+        %disp(FEV_str)
+        if maxVertex == FEV
+            disp("FEV Final:")
+            disp(FEV)
+            disp("Valor Final:")
+            disp(valores(FEV_str))
             return;
         end
 
         % Si no, actualizar el vértice actual y FEV
+        FEV = maxVertex;
         FEV_str = maxVertex_str;
     end
 
