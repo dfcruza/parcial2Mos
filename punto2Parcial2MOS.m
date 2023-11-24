@@ -1,25 +1,25 @@
-clc, clear all, close all
-syms z x y;
-z= (1- x).^2 + 100*(y - x.^2).^2;
-ezsurf(z);
+clc, clear, close all
+syms z x y;% variables simbolicas
+z= (1- x).^2 + 100*(y - x.^2).^2; %funcion a minimizar
+ezsurf(z); %graficar la funcion
 hold on;
 
 v=[x;y];
-x_i=0;  %valor inicial
-y_i=10;  %valor inicial
-v_i = [x_i;y_i];
+x_i=0;  %valor inicial en x
+y_i=10;  %valor inicial en y
+v_i = [x_i;y_i]; %vector de valores iniciales
 grad_z=gradient(z); %gradiente
 hess_z=hessian(z); %hessiano
 
 
-convergencia=0.001;  % convergencia VALOR ORIGINAL 0.001
+convergencia=0.001;  % convergencia
 
 a=0.9;
-minimos = [];
-minimos_z = [];
+minimos = []; %vector de minimos
+minimos_z = []; %vector de minimos en z
 
 i=1;
-grad_z_i=double(subs(grad_z, v, v_i));
+grad_z_i = double(subs(grad_z,v,v_i)); %Evaluar el xi en el gradiente
 while norm(grad_z_i) > convergencia
 
     i=i+1;
@@ -32,7 +32,7 @@ while norm(grad_z_i) > convergencia
     inv_hess_z_i = double(subs(inv_hess_z,v,v_i));
     v_i_new=v_i - a* inv_hess_z_i * grad_z_i; %Expresión de Newton Raphson
     v_i=v_i_new;  %Actualizar el xi
-    plot3(v_i(1), v_i(2),z_i,"og");
+    plot3(v_i(1), v_i(2),z_i,"og"); %Graficar el xi
    
 end
 p = plot3(v_i(1), v_i(2),z_i,'o','LineWidth',4);
